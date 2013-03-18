@@ -1,8 +1,13 @@
 /* conserv_kernels.cu
  *
- * contains the GPU kernel functions for pre-evaluation of mesh variables
- * and the integration functions to solve the DG formulation for systems of
- * hyperbolic conservation laws in two-dimensions.
+ * Contains the GPU variables and kernels to solve hyperbolic conservation laws in two-dimensions.
+ * Stores all mesh variables and the following kernels
+ * 
+ * 1. precompuations
+ * 2. surface integral 
+ * 3. volume integral 
+ * 4. limiter
+ * 5. evaluate u 
  *
  */
 

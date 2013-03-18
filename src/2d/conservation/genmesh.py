@@ -5,7 +5,7 @@ import numpy as np
 genmesh.py
 
 This file is responsible for reading the contents of the .msh file 
-and translating them into something usable for CUDA.
+and creating the mesh mappings for use in DGCUDA
 """
 
 from sys import argv

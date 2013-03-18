@@ -55,16 +55,19 @@ __device__ void U_outflow(double *U, double x, double y, double t) {
 *
 ************************/
 __device__ void U_reflection(double *U_left, double *U_right,
-                             double x, double y, 
+                             double x, double y, double t,
                              double nx, double ny) {
 
-    //double dot, vx, vy;
+    double dot;
+
+    // set rho and E to be the same in the ghost cell
     U_right[0] = U_left[0];
     U_right[3] = U_left[3];
-    double n = -(nx * U_left[1] + ny * U_left[2]);
-    double t = ny * U_left[1] - nx * U_left[2];
-    U_right[1] = n*nx + t*ny;
-    U_right[2] = n*ny - t*nx;
+
+    // normal reflection
+    dot = U_left[1] * nx + U_left[2] * ny;
+    U_right[1] = U_left[1] - 2*dot*nx;
+    U_right[2] = U_left[2] - 2*dot*ny;
 }
 
 

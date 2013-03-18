@@ -1,3 +1,19 @@
+/* main.cu
+ *
+ * Contains the main functions to read the mesh mappings and run the GPU code
+ * to solve the specific problem .
+ *
+ * Does the following
+ * 1. get user input
+ * 2. read mesh mappings
+ * 3. allocate memory on the GPU
+ * 4. get integration points and weights
+ * 5. call basis.cu to precompute basis functions at those integration points
+ * 6. perform other precomputations on GPU
+ * 7. compute initial projection U_0 on GPU
+ * 8. run the time integrator function
+ * 9. write the result to file
+ */
 #include <cuda.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,12 +37,6 @@ extern int time_integrator;
 
 // riemann solver options
 #define LLF 1
-
-/* 2dadvec_euler.cu
- * 
- * This file calls the kernels in 2dadvec_kernels_euler.cu for the 2D advection
- * DG method.
- */
 
 void write_U(int local_num_elem, int num, int total_timesteps) {
     double *Uv1, *Uv2, *Uv3;

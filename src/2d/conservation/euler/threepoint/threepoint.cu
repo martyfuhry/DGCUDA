@@ -106,7 +106,6 @@ __device__ void U_reflection(double *U_left, double *U_right,
 
         // normal reflection
         dot = U_left[1] * nx + U_left[2] * ny;
-
         U_right[1] = U_left[1] - 2*dot*nx;
         U_right[2] = U_left[2] - 2*dot*ny;
     }

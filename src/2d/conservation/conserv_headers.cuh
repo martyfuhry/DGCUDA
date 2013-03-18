@@ -1,3 +1,7 @@
+/* conserv_headers.cuh
+ *
+ * Header file storing user implemented problem-specific functions
+ */
 __device__ void evalU0(double *U, double *V, int i);
 __device__ void eval_flux(double *U, double *flux_x, double *flux_y, 
                           double *, double, int, int);
