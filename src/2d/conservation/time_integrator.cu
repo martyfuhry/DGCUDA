@@ -226,7 +226,6 @@ double time_integrate_rk4(int local_num_elem, int local_num_sides,
         }
 
         // stage 1
-        cudaThreadSynchronize();
         checkCudaError("error before stage 1: eval_surface");
         eval_surface<<<n_blocks_sides, n_threads>>>
                       (d_c, d_rhs_surface_left, d_rhs_surface_right, 

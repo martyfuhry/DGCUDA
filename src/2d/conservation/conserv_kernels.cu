@@ -926,7 +926,6 @@ __global__ void eval_volume(double *C, double *rhs_volume,
         // read coefficients
         for (i = 0; i < n_p; i++) {
             for (n = 0; n < N; n++) {
-                __syncthreads();
                 C_left[n*n_p + i]  = C[num_elem * n_p * n + i * num_elem + idx];
             }
         }
