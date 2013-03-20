@@ -38,13 +38,13 @@ __device__ double get_mu() {
     return 1.;
 }
 __device__ double get_eps() {
-    return 1;
+    return 1.;
 }
 __device__ void U_inflow(double *U, double x, double y, double t) {
     U[0] = 0.;
     U[1] = 0.;
-    if (y > .95 && y < 1.05 && t <= 1./20) {
-        U[2] = sinpi(20*t);
+    if (t <= 1./20) {
+        U[2] = 2*sinpi(20*t);
     } else {
         U[2] = 0.;
     }
@@ -73,14 +73,14 @@ __device__ void U_reflection(double *U_left, double *U_right,
                              double nx, double ny) {
     double dot;
 
-    // set h to be the same
+    // set E_z to be the same
     U_right[2] = U_left[2];
 
     // and reflect the velocities
     dot = U_left[0] * nx + U_left[1] * ny;
 
-    U_right[1] = -U_left[1] + 2*dot*nx;
-    U_right[2] = -U_left[2] + 2*dot*ny;
+    U_right[0] = -U_left[0] + 2*dot*nx;
+    U_right[1] = -U_left[1] + 2*dot*ny;
 }
 
 __device__ void U_exact(double *U, double x, double y, double t) {
