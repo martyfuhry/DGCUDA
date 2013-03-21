@@ -1,6 +1,6 @@
 xf = 3;
 yf = 1;
-h = yf/300;
+h = xf/300;
 Point(1) = {0,0,0,h};
 Point(2) = {xf,0,0,h};
 Point(3) = {xf,yf,0,h};
