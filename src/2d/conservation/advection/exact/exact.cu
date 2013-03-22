@@ -8,7 +8,7 @@
 
 #define PI 3.14159265358979323
 
-int limiter = NO_LIMITER;  // no limiter
+int limiter = LIMITER;  // no limiter
 int time_integrator = RK4; // time integrator to use
 
 /***********************
@@ -23,7 +23,7 @@ int time_integrator = RK4; // time integrator to use
  */
 
 __device__ void U0(double *U, double x, double y) {
-   U[0] = 5.477225575051629E+00-1.095445115010309E+01*x-3.286335345030997E+01*y + 5.477225575051381E+00*x*x + 3.286335345031001E+01*x*y + 3.286335345030994E+01*y*y;
+   U[0] = x - y;
 }
 
 /***********************
@@ -32,7 +32,7 @@ __device__ void U0(double *U, double x, double y) {
 *
 ************************/
 __device__ void get_velocity(double *A, double x, double y, double t) {
-    A[0] = 0;
+    A[0] = 1;
     A[1] = 1;
 }
 
@@ -58,7 +58,7 @@ __device__ void U_outflow(double *U, double x, double y, double t) {
 ************************/
 
 __device__ void U_reflection(double *U_left, double *U_right, 
-                             double x, double y, 
+                             double x, double y, double t,
                              double nx, double ny) {
     // there are no reflecting boundaries in this problem
 }

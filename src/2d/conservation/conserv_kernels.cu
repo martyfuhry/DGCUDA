@@ -628,7 +628,82 @@ __global__ void limit_c(double *C,
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < num_elem) { 
-        int i, n;
+        double U_i, U_c, Umin, Umax, alpha, min_alpha;
+        int s1, s2, s3;
+        int n, i, vertex;
+        int neighbor_idx[3];
+        // get element neighbors
+        s1 = elem_s1[idx];
+        s2 = elem_s2[idx];
+        s3 = elem_s3[idx];
+
+        // get element neighbor indexes
+        neighbor_idx[0] = (left_side_idx[s1] == idx) ? right_side_idx[s1] : left_side_idx[s1];
+        neighbor_idx[1] = (left_side_idx[s2] == idx) ? right_side_idx[s2] : left_side_idx[s2];
+        neighbor_idx[2] = (left_side_idx[s3] == idx) ? right_side_idx[s3] : left_side_idx[s3];
+        
+        // make sure we aren't on a boundary element
+        for (i = 0; i < 3; i++) {
+            neighbor_idx[i] = (neighbor_idx[i] < 0) ? idx : neighbor_idx[i];
+        }
+
+        for (n = 0; n < N; n++) {
+            // set initial stuff
+            U_c = C[num_elem * n_p * n + idx] * basis[0];
+            Umin = U_c;
+            Umax = U_c;
+
+            // get delmin and delmax
+            for (i = 0; i < 3; i++) {
+                U_i = C[num_elem * n_p * n + neighbor_idx[i]] * basis[0];
+                
+                Umin = (U_i < Umin) ? U_i : Umin;
+                Umax = (U_i > Umax) ? U_i : Umax;
+            }
+
+            min_alpha = 1.;
+
+            // at the gauss points
+            int j;
+            for (j = 0; j < n_quad; j++) {
+                //evaluate U
+                U_i = 0.;
+                for (i = 0; i < n_p; i++) {
+                    U_i += C[num_elem * n_p * n + i * num_elem + idx] * basis[i * n_quad + j];
+                }
+            
+                // evaluate alpha
+                if (U_i > U_c) {
+                    alpha = min(1., (U_c - Umin)/(U_i - U_c));
+                } else if (U_i < U_c) {
+                    alpha = min(1., (U_c - Umax)/(U_i - U_c));
+                } else {
+                    alpha = 1;
+                }
+
+                if (alpha < min_alpha)  {
+                    min_alpha = alpha;
+                }
+            }
+
+            if (min_alpha < 0) {
+                min_alpha = 0.;
+            }
+
+            // limit the slope
+            //C[0 * num_elem + idx] = min_alpha / basis[0];
+            //C[1 * num_elem + idx] = 0;
+            //C[2 * num_elem + idx] = 0;
+            C[num_elem * n_p * n + 1 * num_elem + idx] *= min_alpha;
+            C[num_elem * n_p * n + 2 * num_elem + idx] *= min_alpha;
+        }
+    }
+}
+
+
+
+        /*
+        int i, j, n;
         double phi, min_phi;
         double diff, lim, umin, umax;
         int s1, s2, s3;
@@ -641,6 +716,7 @@ __global__ void limit_c(double *C,
         double U1, U2, U3;
         double delmin, delmax;
 
+
         // get side index
         s1 = elem_s1[idx];
         s2 = elem_s2[idx];
@@ -651,7 +727,6 @@ __global__ void limit_c(double *C,
         U2_idx = (left_side_idx[s2] == idx) ? right_side_idx[s2] : left_side_idx[s2];
         U3_idx = (left_side_idx[s3] == idx) ? right_side_idx[s3] : left_side_idx[s3];
 
-        // evaluate U_left 
         for (n = 0; n < N; n++) {
 
             // make sure Ui_idx isn't a boundary
@@ -659,70 +734,57 @@ __global__ void limit_c(double *C,
             U2_idx = (U2_idx < 0) ? idx : U2_idx;
             U3_idx = (U3_idx < 0) ? idx : U3_idx;
 
-            // evaluate the centroid values
-            Uavg = C[num_elem * n_p * n + idx]    * basis[0]; // the cell
-            U1   = C[num_elem * n_p * n + U1_idx] * basis[0]; // neighbor 1
-            U2   = C[num_elem * n_p * n + U2_idx] * basis[0]; // neighbor 2
-            U3   = C[num_elem * n_p * n + U3_idx] * basis[0]; // neighbor 3
+            // get Uavg
+            Uavg = C[num_elem * n_p * n + idx] * basis[0];
 
-            // get minimum centroid value
-            if (Uavg <= U1 && Uavg <= U2 && Uavg <= U3) {
-                umin = Uavg;
-            } else if (U1 <= Uavg && U1 <= U2 && U1 <= U3) {
-                umin = U1;
-            } else if (U2 <= Uavg && U2 <= U1 && U2 <= U3) {
-                umin = U2;
-            } else {
-                umin = U3;
+            // initial set Uavg
+            umin = 1e100;
+            umax = -1e100;
+
+            int U_idx[3] = {U1_idx, U2_idx, U3_idx};
+
+            for (i = 0; i < 3; i++) {
+                U = C[num_elem * n_p * n + U_idx[i]] * basis[0];
+
+                umin = (umin < U) ? umin : U;
+                umax = (umax > U) ? umax : U;
             }
 
-            // get maximum centroid value
-            if (Uavg >= U1 && Uavg >= U2 && Uavg >= U3) {
-                umax = Uavg;
-            } else if (U1 >= Uavg && U1 >= U2 && U1 >= U3) {
-                umax = U1;
-            } else if (U2 >= Uavg && U2 >= U1 && U2 >= U3) {
-                umax = U2;
-            } else {
-                umax = U3;
-            }
-
-            // compute del u
-            delmin = umin - Uavg;
-            delmax = umax - Uavg;
-
-            // use this as the min
+            // initial set min_phi
             min_phi = 1.;
 
-            // at each integration point
-            for (vertex = 0; vertex < 3; vertex++) {
+            // at verticies
+            for (j = 0; j < 3; j++) {
                 // evaluate U
                 U = 0.;
                 for (i = 0; i < n_p; i++) {
                     U += C[num_elem * n_p * n + i * num_elem + idx] 
-                         * basis_vertex[i * 3 + vertex];
+                         * basis_vertex[i * 3 + j];
                 }
 
-                // evaluate the difference
-                diff = U - Uavg;
-
-                // pick the min correct phi
-                if (diff > 0) {
-                    lim = delmax / diff;
-                    phi = (1. < lim) ? 1. : lim;
-                } else if (diff < 0) {
-                    lim = delmin / diff;
-                    phi = (1. < lim) ? 1. : lim;
-                } else {
-                    phi = 1.;
-                    lim = 1.;
+                phi = 1;
+                // pick the correct min_phi
+                if (U > Uavg) {
+                    phi = min(1., (umax - Uavg)/(U - Uavg));
                 }
-                
+                if (U < Uavg) {
+                    phi = min(1., (umin - Uavg)/(U - Uavg));
+                }
+
                 // venkatakrishnan
-                phi = (lim*lim + 2*lim) / (lim*lim + lim + 2);
+                //phi = (lim*lim + 2*lim) / (lim*lim + lim + 2);
 
                 // find min_phi
                 min_phi = (phi < min_phi) ? phi : min_phi;
+            }
+
+            if (min_phi < 0) {
+                min_phi = 0;
+            }
+
+            // don't limit at boundaries
+            if (U1_idx == idx || U2_idx == idx || U3_idx == idx) {
+                min_phi = 1;
             }
 
             // limit the coefficients
@@ -734,6 +796,7 @@ __global__ void limit_c(double *C,
         }
     }
 }
+    */
 
 __device__ void eval_boundary(double *U_left, double *U_right, 
                               double *V, double nx, double ny,

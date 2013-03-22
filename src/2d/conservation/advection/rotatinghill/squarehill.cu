@@ -23,18 +23,11 @@ int time_integrator = RK4; // time integrator to use
  */
 
 __device__ void U0(double *U, double x, double y) {
-    double x0, y0, r, t;
-    x0 = 0.5;
-    y0 = 1;
-    r  = 0.15;
-    t = 0;
-    U[0] = 5*exp(-(pow(x*cospi(2*t) + y*sinpi(2*t) - x0,2) + 
-                   pow(-x*sinpi(2*t) + y*cospi(2*t) - y0,2))/(2*r*r));
-    //if (x < -.2 && x > -.8 && y < .1 && y > -.5) {
-        //U[0] = 1;
-    //} else {
-        //U[0] = 0;
-    //}
+    if (x < -.2 && x > -.8 && y < .1 && y > -.5) {
+        U[0] = 1;
+    } else {
+        U[0] = 0;
+    }
 }
 
 /***********************
@@ -48,15 +41,7 @@ __device__ void get_velocity(double *A, double x, double y, double t) {
 }
 
 __device__ void U_inflow(double *U, double x, double y, double t) {
-    //double A[2];
-    //get_velocity(A, x, y, t);
-    //U0(U, x - A[0] * t, y - A[1] * t);
-    double x0,y0,r;
-    x0 = 0.5;
-    y0 = 1;
-    r  = 0.15;
-    U[0] = 5*exp(-(pow(x*cospi(2*t) + y*sinpi(2*t) - x0,2) + 
-                   pow(-x*sinpi(2*t) + y*cospi(2*t) - y0,2))/(2*r*r));
+    U[0] = 0;
 }
 
 /***********************

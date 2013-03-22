@@ -38,6 +38,34 @@ extern int time_integrator;
 // riemann solver options
 #define LLF 1
 
+void time_average_U(double *Usum1, double *Usum2, double *Usum3, int local_num_elem) {
+    double *Uv1, *Uv2, *Uv3;
+    int i, n;
+    int n_threads     = 512;
+    int n_blocks_elem = (local_num_elem  / n_threads) + ((local_num_elem  % n_threads) ? 1 : 0);
+
+    Uv1 = (double *) malloc(local_num_elem * sizeof(double));
+    Uv2 = (double *) malloc(local_num_elem * sizeof(double));
+    Uv3 = (double *) malloc(local_num_elem * sizeof(double));
+
+    // evaluate and write to file
+    n = 2;
+    eval_u<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3, n);
+    cudaMemcpy(Uv1, d_Uv1, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(Uv2, d_Uv2, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(Uv3, d_Uv3, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+
+    for (i = 0; i < local_num_elem; i++) {
+        Usum1[i] += (Uv1[i]*Uv1[i]);
+        Usum2[i] += (Uv2[i]*Uv2[i]);
+        Usum3[i] += (Uv3[i]*Uv3[i]);
+    }
+
+    free(Uv1);
+    free(Uv2);
+    free(Uv3);
+}
+
 void write_U(int local_num_elem, int num, int total_timesteps) {
     double *Uv1, *Uv2, *Uv3;
     double *V1x, *V1y, *V2x, *V2y, *V3x, *V3y;
@@ -46,10 +74,6 @@ void write_U(int local_num_elem, int num, int total_timesteps) {
     int n_blocks_elem = (local_num_elem  / n_threads) + ((local_num_elem  % n_threads) ? 1 : 0);
     FILE *out_file;
     char out_filename[100];
-
-    cudaMalloc((void **) &d_Uv1, local_num_elem * sizeof(double));
-    cudaMalloc((void **) &d_Uv2, local_num_elem * sizeof(double));
-    cudaMalloc((void **) &d_Uv3, local_num_elem * sizeof(double));
 
     // evaluate at the vertex points and copy over data
     Uv1 = (double *) malloc(local_num_elem * sizeof(double));
@@ -273,7 +297,7 @@ void init_gpu(int local_num_elem, int local_num_sides, int local_n_p,
               double *sides_x2, double *sides_y2,
               int *elem_s1, int *elem_s2, int *elem_s3,
               int *left_elem, int *right_elem,
-              int convergence, int eval_error) {
+              int convergence, int eval_error, int video) {
 
     checkCudaError("error before init.");
     cudaDeviceReset();
@@ -330,6 +354,10 @@ void init_gpu(int local_num_elem, int local_num_sides, int local_n_p,
             printf("Error selecting time integrator.\n");
             exit(0);
     }
+
+    cudaMalloc((void **) &d_Uv1, local_num_elem * sizeof(double));
+    cudaMalloc((void **) &d_Uv2, local_num_elem * sizeof(double));
+    cudaMalloc((void **) &d_Uv3, local_num_elem * sizeof(double));
 
     cudaMalloc((void **) &d_J        , local_num_elem * sizeof(double));
     cudaMalloc((void **) &d_lambda   , local_num_elem * sizeof(double));
@@ -673,7 +701,7 @@ int run_dgcuda(int argc, char *argv[]) {
              sides_x2, sides_y2, 
              elem_s1, elem_s2, elem_s3,
              left_elem, right_elem,
-             convergence, eval_error);
+             convergence, eval_error,video);
 
     // get the correct quadrature rules for this scheme
     set_quadrature(n, &r1_local, &r2_local, &w_local, 
@@ -890,9 +918,6 @@ int run_dgcuda(int argc, char *argv[]) {
     // evaluate and write U to file
     write_U(local_num_elem, total_timesteps, total_timesteps);
 
-    cudaMalloc((void **) &d_Uv1, local_num_elem * sizeof(double));
-    cudaMalloc((void **) &d_Uv2, local_num_elem * sizeof(double));
-    cudaMalloc((void **) &d_Uv3, local_num_elem * sizeof(double));
     Uv1 = (double *) malloc(local_num_elem * sizeof(double));
     Uv2 = (double *) malloc(local_num_elem * sizeof(double));
     Uv3 = (double *) malloc(local_num_elem * sizeof(double));

@@ -11,6 +11,7 @@ extern int local_N;
 extern int limiter;
 
 void write_U(int, int, int);
+void time_average_U(double *, double *, double *, int);
 
 /***********************
  * ASSEMBLE RHS FUNCTIONS
@@ -148,6 +149,19 @@ double time_integrate_rk4(int local_num_elem, int local_num_sides,
     if (convergence) {
         c = (double *) malloc(local_num_elem * local_n_p * local_N * sizeof(double));
     }
+
+    double *Usum1, *Usum2, *Usum3;
+
+    Usum1 = (double *)malloc(local_num_elem * sizeof(double));
+    Usum2 = (double *)malloc(local_num_elem * sizeof(double));
+    Usum3 = (double *)malloc(local_num_elem * sizeof(double));
+
+    for (i = 0; i < local_num_elem; i++) {
+        Usum1[i] = 0;
+        Usum2[i] = 0;
+        Usum3[i] = 0;
+    }
+
     double *max_lambda = (double *) malloc(local_num_elem * sizeof(double));
     double max_l;
 
@@ -401,7 +415,9 @@ double time_integrate_rk4(int local_num_elem, int local_num_sides,
         if (convergence) {
             cudaMemcpy(d_c_prev, d_c, local_num_elem * local_n_p * local_N * sizeof(double), cudaMemcpyDeviceToDevice);
         }
-
+        
+        // TODO: delete this. I was using to get the time averaged intensity for the cmirror maxwell's problem
+        //time_average_U(Usum1, Usum2, Usum3, local_num_elem);
 
         cudaThreadSynchronize();
         checkCudaError("error after final stage.");
@@ -415,6 +431,44 @@ double time_integrate_rk4(int local_num_elem, int local_num_sides,
             }
         }
     }
+
+    /*
+     * TODO: delete this. I was using to get the time averaged intensity for the cmirror maxwell's problem
+    FILE *out_file;
+    char out_filename[100];
+
+    double *V1x = (double *) malloc(local_num_elem * sizeof(double));
+    double *V1y = (double *) malloc(local_num_elem * sizeof(double));
+    double *V2x = (double *) malloc(local_num_elem * sizeof(double));
+    double *V2y = (double *) malloc(local_num_elem * sizeof(double));
+    double *V3x = (double *) malloc(local_num_elem * sizeof(double));
+    double *V3y = (double *) malloc(local_num_elem * sizeof(double));
+
+    cudaMemcpy(V1x, d_V1x, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(V1y, d_V1y, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(V2x, d_V2x, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(V2y, d_V2y, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(V3x, d_V3x, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(V3y, d_V3y, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+
+    sprintf(out_filename, "output/U2-average.pos");
+    out_file  = fopen(out_filename , "w");
+    fprintf(out_file, "View \"U%i \" {\n", 2);
+    for (i = 0; i < local_num_elem; i++) {
+        fprintf(out_file, "ST (%.015lf,%.015lf,0,%.015lf,%.015lf,0,%.015lf,%.015lf,0) {%.015lf,%.015lf,%.015lf};\n", 
+                               V1x[i], V1y[i], V2x[i], V2y[i], V3x[i], V3y[i],
+                               Usum1[i]/timestep, Usum2[i]/timestep, Usum3[i]/timestep);
+    }
+    fprintf(out_file,"};");
+    fclose(out_file);
+
+    free(V1x);
+    free(V1y);
+    free(V2x);
+    free(V2y);
+    free(V3x);
+    free(V3y);
+    */
 
     printf("\n");
     free(max_lambda);
@@ -481,6 +535,14 @@ double time_integrate_rk2(int local_num_elem, int local_num_sides,
     t = 0;
     timestep = 0;
 
+    if (limiter) {
+        limit_c<<<n_blocks_elem, n_threads>>>(d_c, d_elem_s1, d_elem_s2, d_elem_s3,
+                                              d_left_elem, d_right_elem);
+                                              
+        cudaThreadSynchronize();
+    }
+
+ 
     conv = 1;
     printf("Computing...\n");
     while (t < endtime || (timestep < total_timesteps && total_timesteps != -1)) {
@@ -555,6 +617,7 @@ double time_integrate_rk2(int local_num_elem, int local_num_sides,
         if (limiter) {
             limit_c<<<n_blocks_elem, n_threads>>>(d_k1, d_elem_s1, d_elem_s2, d_elem_s3,
                                                   d_left_elem, d_right_elem);
+            cudaThreadSynchronize();
         }
 
         rk_tempstorage<<<n_blocks_rk, n_threads>>>(d_c, d_k1, d_k1, 0.5);
@@ -589,6 +652,7 @@ double time_integrate_rk2(int local_num_elem, int local_num_sides,
         if (limiter) {
             limit_c<<<n_blocks_elem, n_threads>>>(d_k1, d_elem_s1, d_elem_s2, d_elem_s3,
                                                   d_left_elem, d_right_elem);
+            cudaThreadSynchronize();
         }
         checkCudaError("error after stage 2.");
 

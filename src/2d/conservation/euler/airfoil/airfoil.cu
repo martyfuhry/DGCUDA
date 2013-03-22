@@ -7,7 +7,7 @@
 
 #define PI 3.14159
 #define GAMMA 1.4
-#define MACH .78
+#define MACH 1.02
 #define ALPHA 5.
 
 int limiter = LIMITER;  
