@@ -73,13 +73,13 @@ __device__ void eval_flux(double *U, double *flux_x, double *flux_y,
 
     // flux_1 
     flux_x[0] = 0.;
-    flux_x[1] = -1./mu * U[2];
-    flux_x[2] = -1./eps * U[1];
+    flux_x[1] = 1./mu * U[2];
+    flux_x[2] = 1./eps * U[1];
 
     // flux_2
-    flux_y[0] = 1./mu * U[2];
+    flux_y[0] = -1./mu * U[2];
     flux_y[1] = 0.;
-    flux_y[2] = 1./eps * U[0];
+    flux_y[2] = -1./eps * U[0];
 
 }
 
