@@ -42,7 +42,7 @@ __device__ void evalU0(double *U, double *V, int i) {
 }
 
 __device__ double eval_c(double *U) {
-    return sqrtf(U[0]*G);
+    return sqrt(U[0]*G);
 }
 
 __device__ bool is_physical(double *U) {
@@ -153,10 +153,10 @@ __device__ double eval_lambda(double *U_left, double *U_right,
     }
 
     // return the max absolute value of | s +- c |
-    if (fabs(left_max) > fabs(right_max)) {
-        return fabs(left_max);
+    if (abs(left_max) > abs(right_max)) {
+        return abs(left_max);
     } else { 
-        return fabs(right_max);
+        return abs(right_max);
     }
 }
 
@@ -212,7 +212,7 @@ __global__ void eval_global_lambda(double *C, double *lambda,
         c = eval_c(U);
 
         // speed of the wave
-        s = sqrtf(U[1]*U[1] + U[2]*U[2])/U[0];
+        s = sqrt(U[1]*U[1] + U[2]*U[2])/U[0];
 
         // return the max eigenvalue
         if (s > 0) {

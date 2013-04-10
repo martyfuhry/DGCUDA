@@ -29,7 +29,7 @@ __device__ void U0(double *U, double x, double y) {
     y0 = 0.5;
     r  = 0.1;
 
-    U[0] = 10 + 5*exp(-(pow(x - x0,2) + pow(y - y0,2))/(2*r*r));
+    U[0] = 10 + exp(-(pow(x - x0,2) + pow(y - y0,2))/(2*r*r));
     U[1] = 0.;
     U[2] = 0.;
 }
@@ -61,7 +61,7 @@ __device__ void U_outflow(double *U, double x, double y, double t) {
 ************************/
 
 __device__ void U_reflection(double *U_left, double *U_right, 
-                             double x, double y, 
+                             double x, double y, double t,
                              double nx, double ny) {
     double dot;
 
