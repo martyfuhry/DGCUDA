@@ -59,17 +59,45 @@ __device__ void U_reflection(double *U_left, double *U_right,
                              double x, double y, double t,
                              double nx, double ny) {
 
-    double dot;
+    //double dot;
 
+    // set rho and E to be the same in the ghost cell
+    //U_right[0] = U_left[0];
+    //U_right[3] = U_left[3];
+
+    // normal reflection
+    //dot = U_left[1] * nx + U_left[2] * ny;
+
+    //U_right[1] = U_left[1] - 2*dot*nx;
+    //U_right[2] = U_left[2] - 2*dot*ny;
     // set rho and E to be the same in the ghost cell
     U_right[0] = U_left[0];
     U_right[3] = U_left[3];
+    //double Nx, Ny, dot;
+    double u_N, u_T;
 
-    // normal reflection
-    dot = U_left[1] * nx + U_left[2] * ny;
+    u_N = -(nx * U_left[1] + ny * U_left[2]);
+    u_T = ny * U_left[1] - nx * U_left[2];
 
-    U_right[1] = U_left[1] - 2*dot*nx;
-    U_right[2] = U_left[2] - 2*dot*ny;
+    U_right[1] = u_N * nx + u_T * ny;
+    U_right[2] = u_N * ny - u_T * nx;
+
+
+    // taken from algorithm 2 from lilia's code
+    //dot = sqrt(x*x + y*y);
+    //Nx = x / dot;
+    //Ny = y / dot;
+//
+    //if (Nx * nx + Ny * ny < 0) {
+        //Nx *= -1;
+        //Ny *= -1;
+    //}
+//
+    // set the velocities to reflect
+    //U_right[1] =  (U_left[1] * Ny - U_left[2] * Nx)*Ny;
+    //U_right[2] = -(U_left[1] * Ny - U_left[2] * Nx)*Nx;
+//}
+
 }
 
 

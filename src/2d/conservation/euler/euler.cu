@@ -275,3 +275,35 @@ __global__ void eval_global_lambda(double *C, double *lambda,
         }
     }
 }
+
+/* evaluate pressure
+ * 
+ * evaluates pressure at the three vertex points for output
+ * THREADS: num_elem
+ */
+__global__ void eval_pressure(double *C, double *Uv1, double *Uv2, double *Uv3) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < num_elem) {
+        int i, n;
+        double U1[4], U2[4], U3[4];
+
+        // calculate values at the integration points
+        for (n = 0; n < N; n++) {
+            U1[n] = 0.;
+            U2[n] = 0.;
+            U3[n] = 0.;
+            for (i = 0; i < n_p; i++) {
+                U1[n] += C[num_elem * n_p * n + i * num_elem + idx] * basis_vertex[i * 3 + 0];
+                U3[n] += C[num_elem * n_p * n + i * num_elem + idx] * basis_vertex[i * 3 + 1];
+                U2[n] += C[num_elem * n_p * n + i * num_elem + idx] * basis_vertex[i * 3 + 2];
+            }
+        }
+
+        // store result
+        Uv1[idx] = pressure(U1);
+        Uv2[idx] = pressure(U2);
+        Uv3[idx] = pressure(U3);
+    }
+}
+
+
