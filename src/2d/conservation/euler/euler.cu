@@ -276,6 +276,16 @@ __global__ void eval_global_lambda(double *C, double *lambda,
     }
 }
 
+/*
+ * source term
+ */
+__device__ void source_term(double *S, double *U, double *V, double t, int j) {
+    int n;
+    for (n = 0; n < N; n++) {
+        S[n] = 0;
+    }
+}
+
 /* evaluate pressure
  * 
  * evaluates pressure at the three vertex points for output

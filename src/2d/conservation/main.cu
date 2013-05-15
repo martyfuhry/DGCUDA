@@ -66,7 +66,7 @@ void time_average_U(double *Usum1, double *Usum2, double *Usum3, int local_num_e
     free(Uv3);
 }
 
-void write_U(int local_num_elem, int num, int total_timesteps) {
+void write_U(int local_num_elem, int num, int total_timesteps, double **V) {
     double *Uv1, *Uv2, *Uv3;
     double *V1x, *V1y, *V2x, *V2y, *V3x, *V3y;
     int i, n;
@@ -79,23 +79,17 @@ void write_U(int local_num_elem, int num, int total_timesteps) {
     Uv1 = (double *) malloc(local_num_elem * sizeof(double));
     Uv2 = (double *) malloc(local_num_elem * sizeof(double));
     Uv3 = (double *) malloc(local_num_elem * sizeof(double));
-    V1x = (double *) malloc(local_num_elem * sizeof(double));
-    V1y = (double *) malloc(local_num_elem * sizeof(double));
-    V2x = (double *) malloc(local_num_elem * sizeof(double));
-    V2y = (double *) malloc(local_num_elem * sizeof(double));
-    V3x = (double *) malloc(local_num_elem * sizeof(double));
-    V3y = (double *) malloc(local_num_elem * sizeof(double));
-
-    cudaMemcpy(V1x, d_V1x, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(V1y, d_V1y, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(V2x, d_V2x, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(V2y, d_V2y, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(V3x, d_V3x, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(V3y, d_V3y, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
+    V1x = V[0];
+    V1y = V[1];
+    V2x = V[2];
+    V2y = V[3];
+    V3x = V[4];
+    V3y = V[5];
 
     // evaluate and write to file
-    for (n = 0; n < local_N; n++) {
-        eval_u<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3, n);
+    for (n = 0; n < 1; n++) {
+        //eval_u<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3, n);
+        eval_pressure<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3);
         cudaMemcpy(Uv1, d_Uv1, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
         cudaMemcpy(Uv2, d_Uv2, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
         cudaMemcpy(Uv3, d_Uv3, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
@@ -119,12 +113,6 @@ void write_U(int local_num_elem, int num, int total_timesteps) {
     free(Uv1);
     free(Uv2);
     free(Uv3);
-    free(V1x);
-    free(V1y);
-    free(V2x);
-    free(V2y);
-    free(V3x);
-    free(V3y);
 }
 
 
@@ -598,19 +586,6 @@ int get_input(int argc, char *argv[],
         if (strcmp(argv[i], "-v") == 0) {
             *verbose = 1;
         }
-        if (strcmp(argv[i], "-V") == 0) {
-            if (i + 1 < argc) {
-                *video = atof(argv[i+1]);
-                printf("video = %i\n", *video);
-                if (*video < 0) {
-                    usage_error();
-                    return 1;
-                }
-            } else {
-                usage_error();
-                return 1;
-            }
-        }
         if (strcmp(argv[i], "-h") == 0) {
                 usage_error();
                 return 1;
@@ -817,6 +792,15 @@ int run_dgcuda(int argc, char *argv[]) {
     free(s_r);
     free(oned_w_local);
 
+    // get verticies
+    double *V[6];
+    V[0] = V1x;
+    V[1] = V1y;
+    V[2] = V2x;
+    V[3] = V2y;
+    V[4] = V3x;
+    V[5] = V3y;
+
     // initial conditions
     init_conditions<<<n_blocks_elem, n_threads>>>(d_c, d_J, d_V1x, d_V1y, d_V2x, d_V2y, d_V3x, d_V3y);
     checkCudaError("error after initial conditions.");
@@ -842,13 +826,13 @@ int run_dgcuda(int argc, char *argv[]) {
     }
     switch (time_integrator) {
         case RK4:
-            t = time_integrate_rk4(local_num_elem, local_num_sides, 
+            t = time_integrate_rk4(V, local_num_elem, local_num_sides, 
                                    n, local_n_p,
                                    endtime, total_timesteps, min_r,
                                    verbose, convergence, video, tol);
             break;
         case RK2:
-            t = time_integrate_rk2(local_num_elem, local_num_sides, 
+            t = time_integrate_rk2(V, local_num_elem, local_num_sides, 
                                    n, local_n_p,
                                    endtime, total_timesteps, min_r,
                                    verbose, convergence, video, tol);
@@ -916,7 +900,7 @@ int run_dgcuda(int argc, char *argv[]) {
     }
 
     // evaluate and write U to file
-    write_U(local_num_elem, total_timesteps, total_timesteps);
+    write_U(local_num_elem, total_timesteps, total_timesteps, V);
 
     Uv1 = (double *) malloc(local_num_elem * sizeof(double));
     Uv2 = (double *) malloc(local_num_elem * sizeof(double));

@@ -630,7 +630,7 @@ __global__ void limit_c(double *C,
     if (idx < num_elem) { 
         double U_i, U_c, Umin, Umax, alpha, min_alpha;
         int s1, s2, s3;
-        int n, i, vertex;
+        int n, i, side;
         int neighbor_idx[3];
         // get element neighbors
         s1 = elem_s1[idx];
@@ -665,24 +665,27 @@ __global__ void limit_c(double *C,
 
             // at the gauss points
             int j;
-            for (j = 0; j < n_quad; j++) {
+            for (j = 0; j < n_quad1d; j++) {
                 //evaluate U
-                U_i = 0.;
-                for (i = 0; i < n_p; i++) {
-                    U_i += C[num_elem * n_p * n + i * num_elem + idx] * basis[i * n_quad + j];
-                }
-            
-                // evaluate alpha
-                if (U_i > U_c) {
-                    alpha = min(1., (U_c - Umin)/(U_i - U_c));
-                } else if (U_i < U_c) {
-                    alpha = min(1., (U_c - Umax)/(U_i - U_c));
-                } else {
-                    alpha = 1;
-                }
+                for (side = 0; side < 3; side++) {
+                    U_i = 0.;
+                    for (i = 0; i < n_p; i++) {
+                        U_i += C[num_elem * n_p * n + i * num_elem + idx] 
+                             * basis_side[side * n_p * n_quad1d + i * n_quad1d + j];
+                    }
+                
+                    // evaluate alpha
+                    if (U_i > U_c) {
+                        alpha = min(1., (U_c - Umin)/(U_i - U_c));
+                    } else if (U_i < U_c) {
+                        alpha = min(1., (U_c - Umax)/(U_i - U_c));
+                    } else {
+                        alpha = 1;
+                    }
 
-                if (alpha < min_alpha)  {
-                    min_alpha = alpha;
+                    if (alpha < min_alpha)  {
+                        min_alpha = alpha;
+                    }
                 }
             }
 
@@ -980,6 +983,7 @@ __global__ void eval_volume(double *C, double *rhs_volume,
 
     if (idx < num_elem) {
         double V[6];
+        double S[N_MAX];
         double C_left[N_MAX * NP_MAX];
         int i, j, k, n;
         double U[N_MAX];
@@ -1035,16 +1039,23 @@ __global__ void eval_volume(double *C, double *rhs_volume,
             // evaluate the flux
             eval_flux(U, flux_x, flux_y, V, t, j, -1);
 
+            // get the source term
+            source_term(S, U, V, t, j);
+
             // multiply across by phi_i
             for (i = 0; i < n_p; i++) {
-                // compute the sum
-                //     [fx fy] * [y_s, -y_r; -x_s, x_r] * [phi_x phi_y]
                 for (n = 0; n < N; n++) {
+                    // add the sum
+                    //     [fx fy] * [y_s, -y_r; -x_s, x_r] * [phi_x phi_y]
                     rhs_volume[num_elem * n_p * n + i * num_elem + idx] += 
                               flux_x[n] * ( basis_grad_x[n_quad * i + j] * ys
                                            -basis_grad_y[n_quad * i + j] * yr)
                             + flux_y[n] * (-basis_grad_x[n_quad * i + j] * xs 
                                           + basis_grad_y[n_quad * i + j] * xr);
+
+                    // add the source term S * phi_i
+                    rhs_volume[num_elem * n_p * n + i * num_elem + idx] += 
+                            S[n] * basis[n_quad * i + j];
                 }
             }
         }

@@ -55,7 +55,7 @@ __device__ void U_outflow(double *U, double x, double y, double t) {
 *
 ************************/
 __device__ void U_reflection(double *U_left, double *U_right,
-                             double x, double y, 
+                             double x, double y, double t,
                              double nx, double ny) {
 
     double dot, vx, vy;

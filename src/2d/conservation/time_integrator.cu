@@ -10,7 +10,7 @@ void checkCudaError(const char*);
 extern int local_N;
 extern int limiter;
 
-void write_U(int, int, int);
+void write_U(int, int, int, double **);
 void time_average_U(double *, double *, double *, int);
 
 /***********************
@@ -136,7 +136,7 @@ __global__ void rk4(double *c, double *k1, double *k2, double *k3, double *k4) {
  * uses fourth order runge-kutta time integration to solve the RHS.
  * returns the final time this runs to.
  */
-double time_integrate_rk4(int local_num_elem, int local_num_sides, 
+double time_integrate_rk4(double **V, int local_num_elem, int local_num_sides, 
                           int local_n, int local_n_p,
                           double endtime, int total_timesteps, double min_r, 
                           int verbose, int convergence, int video, double tol) {
@@ -187,7 +187,7 @@ double time_integrate_rk4(int local_num_elem, int local_num_sides,
     vidnum = 0;
     if (video > 0) {
         if (timestep % video == 0) {
-            write_U(local_num_elem, vidnum, total_timesteps);
+            write_U(local_num_elem, vidnum, total_timesteps, V);
             cudaThreadSynchronize();
             vidnum++;
         }
@@ -214,7 +214,7 @@ double time_integrate_rk4(int local_num_elem, int local_num_sides,
         timestep++;
 
         //cfl condition
-        dt = 0.7 * min_r / max_l /  (2. * local_n + 1.);
+        dt = 0.5 * min_r / max_l /  (2. * local_n + 1.);
 
         // panic
         if (isnan(dt)) {
@@ -425,7 +425,7 @@ double time_integrate_rk4(int local_num_elem, int local_num_sides,
         // evaluate and write the solution
         if (video > 0) {
             if (timestep % video == 0) {
-                write_U(local_num_elem, vidnum, total_timesteps);
+                write_U(local_num_elem, vidnum, total_timesteps, V);
                 cudaThreadSynchronize();
                 vidnum++;
             }
@@ -508,7 +508,7 @@ __global__ void rk2(double *c, double *k) {
     }
 }
 
-double time_integrate_rk2(int local_num_elem, int local_num_sides, 
+double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides, 
                           int local_n, int local_n_p,
                           double endtime, int total_timesteps, double min_r, 
                           int verbose, int convergence, int video, double tol) {

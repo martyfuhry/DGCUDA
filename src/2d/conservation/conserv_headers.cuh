@@ -30,3 +30,5 @@ __device__ void U_inflow(double *, double, double, double);
 __device__ void U_outflow(double *, double, double, double);
 __device__ void U_reflection(double *, double *, double, double, double, double, double);
 __device__ void U_exact(double *, double, double, double);
+__global__ void eval_pressure( double *, double *, double *, double*);
+__device__ void source_term(double *S, double *U, double *V, double t, int j);
