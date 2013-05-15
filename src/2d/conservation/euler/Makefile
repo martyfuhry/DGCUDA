@@ -1,7 +1,7 @@
 CC=nvcc
 CFLAGS=-arch=sm_20
 
-all: dgcylinder dgsupersonic dgthreepoint dgairfoil dglshock dgtrumpet
+all: dgcylinder dgsupersonic dgdoublemach dgairfoil dglshock dgtrumpet
 
 dgcylinder: cylinder/cylinder.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
 	$(CC) $(CFLAGS) cylinder/cylinder.cu -o dgcylinder
@@ -9,8 +9,8 @@ dgcylinder: cylinder/cylinder.cu euler.cu ../main.cu ../conserv_kernels.cu ../ti
 dgsupersonic: supersonic/supersonic.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
 	$(CC) $(CFLAGS) supersonic/supersonic.cu -o dgsupersonic
 
-dgthreepoint: threepoint/threepoint.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
-	$(CC) $(CFLAGS) threepoint/threepoint.cu -o dgthreepoint
+dgthreepoint: doublemach/doublemach.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
+	$(CC) $(CFLAGS) doublemach/doublemach.cu -o dgdoublemach
 
 dgairfoil: airfoil/airfoil.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
 	$(CC) $(CFLAGS) airfoil/airfoil.cu -o dgairfoil
