@@ -9,7 +9,7 @@ dgcylinder: cylinder/cylinder.cu euler.cu ../main.cu ../conserv_kernels.cu ../ti
 dgsupersonic: supersonic/supersonic.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
 	$(CC) $(CFLAGS) supersonic/supersonic.cu -o dgsupersonic
 
-dgthreepoint: doublemach/doublemach.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
+dgdoublemach: doublemach/doublemach.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
 	$(CC) $(CFLAGS) doublemach/doublemach.cu -o dgdoublemach
 
 dgairfoil: airfoil/airfoil.cu euler.cu ../main.cu ../conserv_kernels.cu ../time_integrator.cu ../quadrature.cu ../basis.cu 
