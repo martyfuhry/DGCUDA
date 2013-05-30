@@ -178,6 +178,21 @@ __device__ double *d_Ny;
 __device__ int *d_left_elem;  // index of left  element for side idx
 __device__ int *d_right_elem; // index of right element for side idx
 
+// atomic add for doubles
+__device__ double atomicAdd(double* address, double val)
+{
+    unsigned long long int* address_as_ull =
+                             (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                            __double_as_longlong(val +
+                                __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
+
 /* initial conditions
  *
  * computes the coefficients for the initial conditions
@@ -666,9 +681,10 @@ __global__ void limit_c(double *C,
             // at the gauss points
             int j;
             for (j = 0; j < n_quad1d; j++) {
-                //evaluate U
+                // along the boundaries
                 for (side = 0; side < 3; side++) {
                     U_i = 0.;
+                    //evaluate U
                     for (i = 0; i < n_p; i++) {
                         U_i += C[num_elem * n_p * n + i * num_elem + idx] 
                              * basis_side[side * n_p * n_quad1d + i * n_quad1d + j];
@@ -978,7 +994,7 @@ __global__ void eval_volume(double *C, double *rhs_volume,
                             double *V1x, double *V1y,
                             double *V2x, double *V2y,
                             double *V3x, double *V3y,
-                            double t) {
+                            double *J, double t) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (idx < num_elem) {
@@ -989,6 +1005,7 @@ __global__ void eval_volume(double *C, double *rhs_volume,
         double U[N_MAX];
         double flux_x[N_MAX], flux_y[N_MAX];
         double xr, yr, xs, ys;
+        double detJ;
 
         // read coefficients
         for (i = 0; i < n_p; i++) {
@@ -1002,6 +1019,9 @@ __global__ void eval_volume(double *C, double *rhs_volume,
         yr = Yr[idx];
         xs = Xs[idx];
         ys = Ys[idx];
+
+        // get jacobian determinant
+        detJ = J[idx];
         
         // get verticies
         V[0] = V1x[idx];
@@ -1055,7 +1075,7 @@ __global__ void eval_volume(double *C, double *rhs_volume,
 
                     // add the source term S * phi_i
                     rhs_volume[num_elem * n_p * n + i * num_elem + idx] += 
-                            S[n] * basis[n_quad * i + j];
+                            S[n] * basis[n_quad * i + j] * w[j] * detJ;
                 }
             }
         }

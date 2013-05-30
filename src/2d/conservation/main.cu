@@ -88,8 +88,8 @@ void write_U(int local_num_elem, int num, int total_timesteps, double **V) {
 
     // evaluate and write to file
     for (n = 0; n < 1; n++) {
-        //eval_u<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3, n);
-        eval_pressure<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3);
+        eval_u<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3, n);
+        //eval_pressure<<<n_blocks_elem, n_threads>>>(d_c, d_Uv1, d_Uv2, d_Uv3);
         cudaMemcpy(Uv1, d_Uv1, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
         cudaMemcpy(Uv2, d_Uv2, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);
         cudaMemcpy(Uv3, d_Uv3, local_num_elem * sizeof(double), cudaMemcpyDeviceToHost);

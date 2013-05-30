@@ -259,7 +259,7 @@ double time_integrate_rk4(double **V, int local_num_elem, int local_num_sides,
                          d_V1x, d_V1y,
                          d_V2x, d_V2y,
                          d_V3x, d_V3y,
-                         t);
+                         d_J, t);
         cudaThreadSynchronize();
 
         checkCudaError("error after stage 1: eval_volume");
@@ -298,7 +298,7 @@ double time_integrate_rk4(double **V, int local_num_elem, int local_num_sides,
                          d_V1x, d_V1y,
                          d_V2x, d_V2y,
                          d_V3x, d_V3y,
-                         t + 0.5*dt);
+                         d_J, t + 0.5*dt);
         cudaThreadSynchronize();
 
         eval_rhs<<<n_blocks_elem, n_threads>>>(d_k2, d_rhs_volume, d_rhs_surface_left, d_rhs_surface_right,
@@ -336,7 +336,7 @@ double time_integrate_rk4(double **V, int local_num_elem, int local_num_sides,
                          d_V1x, d_V1y,
                          d_V2x, d_V2y,
                          d_V3x, d_V3y,
-                         t + 0.5*dt);
+                         d_J, t + 0.5*dt);
         cudaThreadSynchronize();
 
         eval_rhs<<<n_blocks_elem, n_threads>>>(d_k3, d_rhs_volume, d_rhs_surface_left, d_rhs_surface_right, 
@@ -373,7 +373,7 @@ double time_integrate_rk4(double **V, int local_num_elem, int local_num_sides,
                          d_V1x, d_V1y,
                          d_V2x, d_V2y,
                          d_V3x, d_V3y,
-                         t + dt);
+                         d_J, t + dt);
         cudaThreadSynchronize();
 
         eval_rhs<<<n_blocks_elem, n_threads>>>(d_k4, d_rhs_volume, d_rhs_surface_left, d_rhs_surface_right, 
@@ -604,7 +604,8 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
                          d_xr, d_yr, d_xs, d_ys,
                          d_V1x, d_V1y,
                          d_V2x, d_V2y,
-                         d_V3x, d_V3y, t);
+                         d_V3x, d_V3y, 
+                         d_J, t);
         cudaThreadSynchronize();
 
         checkCudaError("error after stage 1: eval_volume");
@@ -641,7 +642,7 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
                          d_V1x, d_V1y,
                          d_V2x, d_V2y,
                          d_V3x, d_V3y,
-                         t + 0.5*dt);
+                         d_J, t + 0.5*dt);
         cudaThreadSynchronize();
 
         eval_rhs<<<n_blocks_elem, n_threads>>>(d_k1, d_rhs_volume, d_rhs_surface_left, d_rhs_surface_right,
@@ -660,6 +661,13 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
         rk2<<<n_blocks_rk, n_threads>>>(d_c, d_k1);
         cudaThreadSynchronize();
 
+        // limit after final stage 
+        if (limiter) {
+            limit_c<<<n_blocks_elem, n_threads>>>(d_c, d_elem_s1, d_elem_s2, d_elem_s3,
+                                                  d_left_elem, d_right_elem);
+            cudaThreadSynchronize();
+        }
+ 
         // check the convergence
         if (convergence && timestep > 0) {
             check_convergence<<<n_blocks_rk, n_threads>>>(d_c_prev, d_c);
@@ -685,4 +693,17 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
     free(max_lambda);
     //free(c);
     return t;
+}
+
+__global__ void multiply_rhs(double *c, double *J, double dt) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    int i, n;
+
+    if (idx < num_elem) {
+        for (i = 0; i < n_p; i++) {
+            for (n = 0; n < N; n++) {
+                c[num_elem * n_p * n + i * num_elem + idx] *= dt / J[idx];
+            }
+        }
+    }
 }
