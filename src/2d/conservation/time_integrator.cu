@@ -513,7 +513,7 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
                           double endtime, int total_timesteps, double min_r, 
                           int verbose, int convergence, int video, double tol) {
     int n_threads = 512;
-    int i, timestep;
+    int i, timestep, vidnum;
     double *c;
     double dt, t;
 
@@ -542,7 +542,16 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
         cudaThreadSynchronize();
     }
 
- 
+    // write initial conditions if video
+    vidnum = 0;
+    if (video > 0) {
+        if (timestep % video == 0) {
+            write_U(local_num_elem, vidnum, total_timesteps, V);
+            cudaThreadSynchronize();
+            vidnum++;
+        }
+    }
+
     conv = 1;
     printf("Computing...\n");
     while (t < endtime || (timestep < total_timesteps && total_timesteps != -1)) {
@@ -577,10 +586,14 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
             t += dt;
         }
 
+        // output timestep
         if (verbose == 1) {
-            printf("t = %lf, dt = %lf, max_l = %lf\n", t, dt, max_l);
-        } else {
-            printf("\rt = %lf", t);
+            printf("(%i) t = %lf, dt = %lf, max_l = %lf\n", timestep, t, dt, max_l);
+        } else if (convergence == 1)  {
+            printf("\r(%i) t = %lf, convergence = %.015lf", timestep, t, conv);
+        }
+        else {
+            printf("\r(%i) t = %lf", timestep, t);
         }
 
         // stage 1
@@ -687,6 +700,14 @@ double time_integrate_rk2(double **V, int local_num_elem, int local_num_sides,
         cudaThreadSynchronize();
         checkCudaError("error after final stage.");
 
+        // evaluate and write the solution
+        if (video > 0) {
+            if (timestep % video == 0) {
+                write_U(local_num_elem, vidnum, total_timesteps, V);
+                cudaThreadSynchronize();
+                vidnum++;
+            }
+        }
     }
 
     printf("\n");

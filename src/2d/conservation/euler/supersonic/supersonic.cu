@@ -10,8 +10,8 @@
 #define GAMMA 1.4
 #define MACH 2.25
 
-int limiter = NO_LIMITER;  // use a limiter or not
-int time_integrator = RK2; // time integrator to use
+int limiter = LIMITER;  // use a limiter or not
+int time_integrator = RK4; // time integrator to use
 
 /***********************
  *
